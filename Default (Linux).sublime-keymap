@@ -1,8 +1,9 @@
 [
 { 
 	"keys": ["ctrl+shift+i"],
-	"args": {"parameter":"$file"},
+	"args" : {"parameter":"$file"},
 	"command": "example"
  }
 
 ]
+

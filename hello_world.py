@@ -1,4 +1,3 @@
-from __future__ import print_function    
 import sublime
 import sublime_plugin
 import os
@@ -10,18 +9,68 @@ vendor_dir = os.path.join(parent_dir, 'Packages')
 
 sys.path.append(vendor_dir)
 
-import stackexchange
+import requests
+
+text = 'hello people'
 
 class ExampleCommand(sublime_plugin.TextCommand):
 	def run(self, edit,**args):
+		global text 
+		#self.view.insert(edit, 0, args['parameter']+self.view.file_name())
+		text = ""
+		self.get_solution_stackoverflow("hello world")
 
-		self.view.insert(edit, 0, os.path.basename(__file__))
-		user_api_key = None
-		so = stackexchange.Site(stackexchange.StackOverflow, app_key=user_api_key, impose_throttling=True)
+
+
+	def get_solution_stackoverflow(self,error_term):	
 		term = "vim quit"
-		#qs = so.search(intitle=term)
-		i = 0
-		#for q in qs:
-		#	self.view.insert(edit,0,q.title+"\n")
-		#self.view.replace(edit,allcontent,'                               ,|     \n                             //|                              ,|\n                           //,/                             -~ |\n                         // / |                         _-~   /  ,\n                       /\'/ / /                       _-~   _/_-~ |\n                      ( ( / /\'                   _ -~     _-~ ,/\'\n                       \\~\\/\'/|             __--~~__--\\ _-~  _/,\n               ,,)))))));, \\/~-_     __--~~  --~~  __/~  _-~ /\n            __))))))))))))));,>/\\   /        __--~~  \\-~~ _-~\n           -\\(((((\'\'\'\'(((((((( >~\\/     --~~   __--~\' _-~ ~|\n  --==//////((\'\'  .     `)))))), /     ___---~~  ~~\\~~__--~ \n          ))| @    ;-.     (((((/           __--~~~\'~~/\n          ( `|    /  )      )))/      ~~~~~__\\__---~~__--~~--_\n             |   |   |       (/      ---~~~/__-----~~  ,;::\'  \\         ,\n             o_);   ;        /      ----~~/           \\,-~~~\\  |       /|\n                   ;        (      ---~~/         `:::|      |;|      < >\n                  |   _      `----~~~~\'      /      `:|       \\;\\_____// \n            ______/\\/~    |                 /        /         ~------~\n          /~;;.____/;;\'  /          ___----(   `;;;/               \n         / //  _;______;\'------~~~~~    |;;/\\    /          \n        //  | |                        /  |  \\;;,\\              \n       (<_  | ;                      /\',/-----\'  _>\n        \\_| ||_                     //~;~~~~~~~~~ \n            `\\_|                   (,~~ \n                                    \\~\\ \n                                     ~~ \n')
-	
+		error_term = error_term.replace(' ','%20')
+		url = "https://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=activity&tagged=python&intitle="+error_term+"&site=stackoverflow&filter=!Sm*O0f69(tqGyj3*s1"
+		data = requests.get(url)
+		json = data.json()
+		con =  str(json['items'][0]['tags'])
+		self.create_phantoms(con)
+		#SfCommand.run(self,edit)
+
+
+	def create_phantoms(self,content):
+		#content = 'Hello, <b>World!</b><br /><a href="https://www.sublimetext.com/">Click here to go to the ST3 website in your default browser</a>'
+		width = str(int(len(content)*7.8))
+		
+		html =  '''<body id="my-plugin-feature">
+					   <style>
+					   		div.error {
+			   					background-color: color(var(--background) blend(red 50%));
+			   					padding: 5px;
+			   					border-radius:2px;
+			   					width:'''+width+'''px;
+					   		}
+					   		div.empty{
+					   			background-colot:white;	
+					   		}
+					   		a{
+					   			padding:5px; 
+					   		}
+					   	</style>
+					   	<div class="error">''' + content + '  <a href=hide>'+chr(0x00D7)+'''</a>
+					   	</div>
+					   	
+				   	</body>'''
+		
+		self.view.add_phantom("test", self.view.sel()[0],html, sublime.LAYOUT_BLOCK, 
+			on_navigate=lambda href: self.view.erase_phantoms("test"))
+		
+
+
+
+class SfprintCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+	    self.view.insert(edit, self.view.size(), text)
+
+class SfCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		self.panel = self.view.window().create_output_panel('sf_st3_output')
+		self.view.window().run_command('show_panel', { 'panel': 'output.sf_st3_output' })
+		self.panel.run_command('sfprint');
+
+
