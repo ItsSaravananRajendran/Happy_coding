@@ -8,6 +8,11 @@ output = subprocess.Popen(args=args,stdout=subprocess.PIPE,stderr=subprocess.STD
 print output
 output = output.split('\n')
 error = output[len(output)-2]
-replace = error.split('\'')
-error = error.replace(replace[1],'')
+if "NameError" not  in error:
+    quote_count = error.count('\'')
+    if quote_count > 0:
+        single_split = error.split('\'')
+        error = error.replace(single_split[1],'')
+if "File" in  output[0]:
+    print output[0]
 print error

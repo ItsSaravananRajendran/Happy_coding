@@ -1,2 +1,5 @@
 arr = [1,2]
-print arr[3]
+#with open('fi.f','d') as data:
+#    print data
+print "hi
+

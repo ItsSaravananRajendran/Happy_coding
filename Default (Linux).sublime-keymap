@@ -1,7 +1,6 @@
 [
 { 
 	"keys": ["ctrl+shift+i"],
-	"args" : {"parameter":"$file"},
 	"command": "example"
  }
 
