@@ -45,22 +45,23 @@ class ExampleCommand(sublime_plugin.TextCommand):
 		child = subprocess.Popen(args=args,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 		output = str(child.communicate()[0].decode("UTF-8"))
 		rc = child.returncode
-		#print (output)
+		print (output)
 		if rc is not 0:
 			if compiler == "python2":
 				tag = "python2"
 				ind = output.index('^')
+				#print ("Output = ",output)
+				lineNo = output[output.find("line") + 4:]
+				lineNo = int(lineNo.split('\n')[0])
+				#print ("Line No = ",lineNo)
 				errString = output[ind+2:]
+				print ("Error string ",errString)
 				errString = errString.replace('\\n\'',' ')
 				t = self.get_solution_stackoverflow(errString,compiler)
-				self.create_phantoms(t)
+				self.create_phantoms(t,lineNo-1)
 
 			elif compiler == "g++":
 				tag="c++"
-				#print("a")
-				#print(type(output))
-				#print(output)
-				#print(output.find("error:"))
 				starts = [m.end()+1 for m in re.finditer("error:",output)]
 				lineByline = output.split('\n')
 				cppStart = [I.find(".cpp")+5 for I in lineByline[1:]]
@@ -94,7 +95,7 @@ class ExampleCommand(sublime_plugin.TextCommand):
 				count = 0
 				for errors in lis_of_err:
 					phantomContent=self.get_solution_stackoverflow(errors,compiler)
-					self.create_phantoms(phantomContent,lineNo[count])
+					self.create_phantoms(phantomContent,lineNo[count]-1)
 					count += 1
 
 		else:
@@ -108,9 +109,7 @@ class ExampleCommand(sublime_plugin.TextCommand):
 	def get_solution_stackoverflow(self,error_term,compiler):	
 		temp_term = error_term
 		error_term = error_term.replace(' ','%20')
-#		url = "https://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=activity&tagged="+tag+"&intitle="+error_term+"&site=stackoverflow&filter=!Sm*O0f69(tqGyj3*s1"
 		
-		#check if cache exists and create it if it doesn't exist
 		if not os.path.exists("/tmp/cache.txt"):
 				d = dict()
 				with open("/tmp/cache.txt", "w") as f:
@@ -119,14 +118,14 @@ class ExampleCommand(sublime_plugin.TextCommand):
 				d = json.load(f)
 				if compiler in d:
 						if error_term in d:
-								print("cache hit!")
+								#print("cache hit!")
 								return d[compiler][error_term]
 				else:
 					d[compiler] = dict()
 
 
 
-		url = "http://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=activity&site=stackoverflow&tagged"+tag+"&intitle="+error_term+"&key=Rk74w3DkV08lYi62tlFJag((&filter=!Sm*O0f69(tqGyj3*s1"
+		url = "http://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=votes&site=stackoverflow&tagged"+tag+"&intitle="+error_term+"&key=Rk74w3DkV08lYi62tlFJag((&filter=!Sm*O0f69(tqGyj3*s1"
 	
 		print("url going to call is:",url)
 		data = requests.get(url)
