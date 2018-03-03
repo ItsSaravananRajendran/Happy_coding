@@ -13,6 +13,7 @@ sys.path.append(vendor_dir)
 import requests
 
 text = ''
+tag=''
 
 class ExampleCommand(sublime_plugin.TextCommand):
 	def run(self, edit,**args):
@@ -36,16 +37,18 @@ class ExampleCommand(sublime_plugin.TextCommand):
 		#print (output)
 		if rc is not 0:
 			if compiler == "python2":
-				ind = output.index('^\\n')
-				errString = output[ind+3:]
+				tag = "python2"
+				ind = output.index('^')
+				errString = output[ind+2:]
 				errString = errString.replace('\\n\'',' ')
 				print (errString)
 				self.get_solution_stackoverflow(errString,compiler)
 			elif compiler == "g++":
-				print("a")
-				print(type(output))
-				print(output)
-				print(output.find("error:"))
+				tag="c++"
+				#print("a")
+				#print(type(output))
+				#print(output)
+				#print(output.find("error:"))
 				starts = [m.end()+1 for m in re.finditer("error:",output)]
 				lis_of_err=[]
 				for error_end in starts:
@@ -76,8 +79,8 @@ class ExampleCommand(sublime_plugin.TextCommand):
 	def get_solution_stackoverflow(self,error_term,compiler):	
 		temp_term = error_term
 		error_term = error_term.replace(' ','%20')
-		url = "https://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=activity&tagged="+compiler+"&intitle="+error_term+"&site=stackoverflow&filter=!Sm*O0f69(tqGyj3*s1"
-		print(url)
+		url = "https://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=activity&tagged="+tag+"&intitle="+error_term+"&site=stackoverflow&filter=!Sm*O0f69(tqGyj3*s1"
+		print("url going to call is:",url)
 		data = requests.get(url)
 		json = data.json()
 		if json["items"] == []:
