@@ -5,6 +5,7 @@ import sys
 import re
 import subprocess
 import json
+import uuid
 
 parent_dir = os.path.abspath(os.path.dirname(__file__))
 vendor_dir = os.path.join(parent_dir, 'Packages')
@@ -51,7 +52,6 @@ class ExampleCommand(sublime_plugin.TextCommand):
 				ind = output.index('^')
 				errString = output[ind+2:]
 				errString = errString.replace('\\n\'',' ')
-				print (errString)
 				t = self.get_solution_stackoverflow(errString,compiler)
 				self.create_phantoms(t)
 
@@ -62,6 +62,23 @@ class ExampleCommand(sublime_plugin.TextCommand):
 				#print(output)
 				#print(output.find("error:"))
 				starts = [m.end()+1 for m in re.finditer("error:",output)]
+				lineByline = output.split('\n')
+				cppStart = [I.find(".cpp")+5 for I in lineByline[1:]]
+				lineNo = []
+				count = 1
+				for I in cppStart:
+					if I > -1:
+						print ("Before :" ,lineByline[count][I:])
+						end = lineByline[count][I:].find(":")
+						print (end)
+						if end > -1:
+							number = lineByline[count][I:I+end]
+							print ("Number" ,number)
+							lineNo.append(int(number))
+					count +=1 
+
+
+
 				lis_of_err=[]
 				for error_end in starts:
 					str_t = ""
@@ -74,12 +91,11 @@ class ExampleCommand(sublime_plugin.TextCommand):
 					str_t = str_t.replace('#','%23')
 					lis_of_err.append(str_t)
 
-				print(lis_of_err)
-
+				count = 0
 				for errors in lis_of_err:
-					print(errors)
-					t=self.get_solution_stackoverflow(errors,compiler)
-					self.create_phantoms(t)
+					phantomContent=self.get_solution_stackoverflow(errors,compiler)
+					self.create_phantoms(phantomContent,lineNo[count])
+					count += 1
 
 		else:
 			text = str(output)
@@ -95,11 +111,11 @@ class ExampleCommand(sublime_plugin.TextCommand):
 #		url = "https://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=activity&tagged="+tag+"&intitle="+error_term+"&site=stackoverflow&filter=!Sm*O0f69(tqGyj3*s1"
 		
 		#check if cache exists and create it if it doesn't exist
-		if not os.path.exists("/home/thunderbolt/Desktop/cache.txt"):
+		if not os.path.exists("/tmp/cache.txt"):
 				d = dict()
-				with open("/home/thunderbolt/Desktop/cache.txt", "w") as f:
+				with open("/tmp/cache.txt", "w") as f:
 						json.dump(d, f)
-		with open("/home/thunderbolt/Desktop/cache.txt", "r") as f:
+		with open("/tmp/cache.txt", "r") as f:
 				d = json.load(f)
 				if compiler in d:
 						if error_term in d:
@@ -130,7 +146,7 @@ class ExampleCommand(sublime_plugin.TextCommand):
 				for item in items:
 					if "answers" in item.keys(): 
 						con = item["answers"][0]["body"]
-						with open("/home/thunderbolt/Desktop/cache.txt", "w") as f:
+						with open("/tmp/cache.txt", "w") as f:
 							d[compiler][error_term] = con
 							json.dump(d, f)
 						return con
@@ -139,7 +155,7 @@ class ExampleCommand(sublime_plugin.TextCommand):
 
 		except KeyError:
 			con = temp_term
-			with open("/home/thunderbolt/Desktop/cache.txt", "w") as f:
+			with open("/tmp/cache.txt", "w") as f:
 				d[compiler][error_term] = con
 				json.dump(d, f)
 			return con
@@ -156,7 +172,7 @@ class ExampleCommand(sublime_plugin.TextCommand):
 		return content
 
 
-	def create_phantoms(self,content):
+	def create_phantoms(self,content,line):
 		width = (int(len(content)*7.8))
 		html =  '''<html><body id="my-plugin-feature">
 					   <style>
@@ -179,13 +195,13 @@ class ExampleCommand(sublime_plugin.TextCommand):
 					   	</div>
 					   	
 				   	</body></html>'''
-		with open("/home/thunderbolt/out.html",'w') as file:
-			file.write(html)
-
 		
-		self.view.add_phantom("test", self.view.sel()[0],html, sublime.LAYOUT_BLOCK, 
-			on_navigate=lambda href: self.view.erase_phantoms("test"))
-		
+		regions = [ sublime.Region(0, self.view.size()) ]
+		regions = self.view.split_by_newlines(regions[0])
+		lineRegion = regions[line]		
+		name = str(uuid.uuid4())		
+		self.view.add_phantom(name, lineRegion,html, sublime.LAYOUT_BLOCK, 
+			on_navigate=lambda href: self.view.erase_phantoms(name))
 
 
 
