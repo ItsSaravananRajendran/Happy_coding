@@ -1,7 +1,9 @@
 [
 { 
 	"keys": ["ctrl+shift+i"],
-	"command": "example"
+	"command": "example",
+	"keys": ["ctrl+shift+g"],
+	"command": "geeks"
  }
 
 ]
