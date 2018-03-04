@@ -173,6 +173,8 @@ class ExampleCommand(sublime_plugin.TextCommand):
 
 	def create_phantoms(self,content,line):
 		width = (int(len(content)*7.8))
+		if (width > 400):
+			width = 400
 		html =  '''<html><body id="my-plugin-feature">
 					   <style>
 					   		div.error {

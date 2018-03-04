@@ -4,6 +4,7 @@ import os
 import sys
 import re
 import subprocess
+import uuid
 
 parent_dir = os.path.abspath(os.path.dirname(__file__))
 vendor_dir = os.path.join(parent_dir, 'Packages')
@@ -11,11 +12,15 @@ vendor_dir = os.path.join(parent_dir, 'Packages')
 sys.path.append(vendor_dir)
 
 import requests
+import stackexchange
 
 text = ''
 tag=''
+user_api_key = "empR4Hsq)41kh9mLYTXfXg(("
+so = stackexchange.Site(stackexchange.StackOverflow, app_key=user_api_key, impose_throttling=True)
 
-class ExampleCommand(sublime_plugin.TextCommand):
+
+class ExCommand(sublime_plugin.TextCommand):
 	def run(self, edit,**args):
 		global text 
 		text = ""
@@ -41,14 +46,10 @@ class ExampleCommand(sublime_plugin.TextCommand):
 				ind = output.index('^')
 				errString = output[ind+2:]
 				errString = errString.replace('\\n\'',' ')
-				print (errString)
+				print ("Error string is"+errString)
 				self.get_solution_stackoverflow(errString,compiler)
 			elif compiler == "g++":
 				tag="c++"
-				#print("a")
-				#print(type(output))
-				#print(output)
-				#print(output.find("error:"))
 				starts = [m.end()+1 for m in re.finditer("error:",output)]
 				lis_of_err=[]
 				for error_end in starts:
@@ -81,6 +82,11 @@ class ExampleCommand(sublime_plugin.TextCommand):
 		error_term = error_term.replace(' ','%20')
 		url = "https://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=activity&tagged="+tag+"&intitle="+error_term+"&site=stackoverflow&filter=!Sm*O0f69(tqGyj3*s1"
 		print("url going to call is:",url)
+		
+		qs = so.search(intitle=error_term)
+
+		print("the return of key is"+str(qs))
+
 		data = requests.get(url)
 		json = data.json()
 		if json["items"] == []:
@@ -127,9 +133,9 @@ class ExampleCommand(sublime_plugin.TextCommand):
 		with open("/home/jessuva/out.html",'w') as file:
 			file.write(html)
 
-		
-		self.view.add_phantom("test", self.view.sel()[0],html, sublime.LAYOUT_BLOCK, 
-			on_navigate=lambda href: self.view.erase_phantoms("test"))
+		name = str(uuid.uuid4())		
+		self.view.add_phantom(name, self.view.sel()[0],html, sublime.LAYOUT_BLOCK, 
+			on_navigate=lambda href: self.view.erase_phantoms(name))
 		
 
 
