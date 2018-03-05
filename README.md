@@ -5,3 +5,7 @@ solutions would be prosessed by the script so that relevant answers
 and comments are shown to the user. By automating this process of
 search and retrival we can add some more intellegence to our text
 editor.
+
+# Results
+![ Output compilation ]( "Logo Title Text 1")
+
