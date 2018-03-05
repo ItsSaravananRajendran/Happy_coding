@@ -4,6 +4,7 @@ import os
 import sys
 import re
 import subprocess
+import json
 import uuid
 
 parent_dir = os.path.abspath(os.path.dirname(__file__))
@@ -12,15 +13,20 @@ vendor_dir = os.path.join(parent_dir, 'Packages')
 sys.path.append(vendor_dir)
 
 import requests
-import stackexchange
 
-text = ''
-tag=''
-user_api_key = "empR4Hsq)41kh9mLYTXfXg(("
+user_api_key = "xQnIkNqv3yeDM22)6iIMPw(("
+
+if not user_api_key: user_api_key = None
+
+import stackexchange
 so = stackexchange.Site(stackexchange.StackOverflow, app_key=user_api_key, impose_throttling=True)
 
 
-class ExCommand(sublime_plugin.TextCommand):
+
+text = ''
+tag=''
+
+class ExampleCommand(sublime_plugin.TextCommand):
 	def run(self, edit,**args):
 		global text 
 		text = ""
@@ -39,18 +45,41 @@ class ExCommand(sublime_plugin.TextCommand):
 		child = subprocess.Popen(args=args,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 		output = str(child.communicate()[0].decode("UTF-8"))
 		rc = child.returncode
-		#print (output)
+		print (output)
 		if rc is not 0:
 			if compiler == "python2":
 				tag = "python2"
 				ind = output.index('^')
+				#print ("Output = ",output)
+				lineNo = output[output.find("line") + 4:]
+				lineNo = int(lineNo.split('\n')[0])
+				#print ("Line No = ",lineNo)
 				errString = output[ind+2:]
+				print ("Error string ",errString)
 				errString = errString.replace('\\n\'',' ')
-				print ("Error string is"+errString)
-				self.get_solution_stackoverflow(errString,compiler)
+				t = self.get_solution_stackoverflow(errString,compiler)
+				self.create_phantoms(t,lineNo-1)
+
 			elif compiler == "g++":
 				tag="c++"
 				starts = [m.end()+1 for m in re.finditer("error:",output)]
+				lineByline = output.split('\n')
+				cppStart = [I.find(".cpp")+5 for I in lineByline[1:]]
+				lineNo = []
+				count = 1
+				for I in cppStart:
+					if I > -1:
+						print ("Before :" ,lineByline[count][I:])
+						end = lineByline[count][I:].find(":")
+						print (end)
+						if end > -1:
+							number = lineByline[count][I:I+end]
+							print ("Number" ,number)
+							lineNo.append(int(number))
+					count +=1 
+
+
+
 				lis_of_err=[]
 				for error_end in starts:
 					str_t = ""
@@ -63,11 +92,11 @@ class ExCommand(sublime_plugin.TextCommand):
 					str_t = str_t.replace('#','%23')
 					lis_of_err.append(str_t)
 
-				print(lis_of_err)
-
+				count = 0
 				for errors in lis_of_err:
-					print(errors)
-					self.get_solution_stackoverflow(errors,compiler)
+					phantomContent=self.get_solution_stackoverflow(errors,compiler)
+					self.create_phantoms(phantomContent,lineNo[count]-1)
+					count += 1
 
 		else:
 			text = str(output)
@@ -80,23 +109,58 @@ class ExCommand(sublime_plugin.TextCommand):
 	def get_solution_stackoverflow(self,error_term,compiler):	
 		temp_term = error_term
 		error_term = error_term.replace(' ','%20')
-		url = "https://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=activity&tagged="+tag+"&intitle="+error_term+"&site=stackoverflow&filter=!Sm*O0f69(tqGyj3*s1"
-		print("url going to call is:",url)
 		
-		qs = so.search(intitle=error_term)
+		if not os.path.exists("/tmp/cache.txt"):
+				d = dict()
+				with open("/tmp/cache.txt", "w") as f:
+						json.dump(d, f)
+		with open("/tmp/cache.txt", "r") as f:
+				d = json.load(f)
+				if compiler in d:
+						if error_term in d:
+								#print("cache hit!")
+								return d[compiler][error_term]
+				else:
+					d[compiler] = dict()
 
-		print("the return of key is"+str(qs))
 
+
+		url = "http://api.stackexchange.com/2.2/search?page=1&pagesize=10&order=desc&sort=votes&site=stackoverflow&tagged"+tag+"&intitle="+error_term+"&key=Rk74w3DkV08lYi62tlFJag((&filter=!Sm*O0f69(tqGyj3*s1"
+	
+		print("url going to call is:",url)
 		data = requests.get(url)
-		json = data.json()
-		if json["items"] == []:
-			#it means that stack overflow does not have an answer for this! thus i just append the original error
-			con = temp_term
-			self.create_phantoms(con)
-			return con
+		lidwin = data.json()
+		
+		try:
 
-		con =  str(json['items'][0]['answers'][0]['body'])
+			if "items" not in lidwin.keys():
+				raise KeyError("kick liddu")
+
+			if lidwin["items"] == []:
+				raise KeyError("kick david");
+
+			elif lidwin["items"] != []:
+				items = lidwin["items"]
+
+				for item in items:
+					if "answers" in item.keys(): 
+						con = item["answers"][0]["body"]
+						with open("/tmp/cache.txt", "w") as f:
+							d[compiler][error_term] = con
+							json.dump(d, f)
+						return con
+
+			#con =  str(lidwin['items'][0]['answers'][0]['body'])
+
+		except KeyError:
+			con = temp_term
+			with open("/tmp/cache.txt", "w") as f:
+				d[compiler][error_term] = con
+				json.dump(d, f)
+			return con
+		
 		#print (con)
+
 		con = con.replace('\n','<br />')
 		con = con.replace('<pre>','<div class="preCode"><pre>')
 		con = con.replace('</pre>','</pre></div>')
@@ -107,8 +171,10 @@ class ExCommand(sublime_plugin.TextCommand):
 		return content
 
 
-	def create_phantoms(self,content):
+	def create_phantoms(self,content,line):
 		width = (int(len(content)*7.8))
+		if (width > 400):
+			width = 400
 		html =  '''<html><body id="my-plugin-feature">
 					   <style>
 					   		div.error {
@@ -130,13 +196,13 @@ class ExCommand(sublime_plugin.TextCommand):
 					   	</div>
 					   	
 				   	</body></html>'''
-		with open("/home/jessuva/out.html",'w') as file:
-			file.write(html)
-
-		name = str(uuid.uuid4())		
-		self.view.add_phantom(name, self.view.sel()[0],html, sublime.LAYOUT_BLOCK, 
-			on_navigate=lambda href: self.view.erase_phantoms(name))
 		
+		regions = [ sublime.Region(0, self.view.size()) ]
+		regions = self.view.split_by_newlines(regions[0])
+		lineRegion = regions[line]		
+		name = str(uuid.uuid4())		
+		self.view.add_phantom(name, lineRegion,html, sublime.LAYOUT_BLOCK, 
+			on_navigate=lambda href: self.view.erase_phantoms(name))
 
 
 

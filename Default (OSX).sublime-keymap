@@ -1,7 +1,6 @@
 [
-{ 
-	"keys": ["super+shift+i"],
-	"command": "example"
- }
-
+ { "keys": ["ctrl+shift+i"],"command": "example" },
+ { "keys": ["ctrl+shift+g"],"command": "geeks" }
 ]
+
+
